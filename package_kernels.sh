@@ -21,6 +21,7 @@ mkdir -p $root_dir/tmp/$kernel/usr/src/linux-headers-"$kernel_version" || { echo
 cp -r ./headers/* $root_dir/tmp/$kernel/usr/src/linux-headers-"$kernel_version" || { echo "Failed to replace the build directory for kernel $kernel"; exit 1; }
 
 cd $root_dir/tmp/$kernel || { echo "Failed to enter directory for kernel $kernel"; exit 1; }
+rm -rf lib/modules/*/build
 tar zcf $root_dir/out/kernel-"$kernel_version".tar.gz * --owner=0 --group=0 || { echo "Failed to create archive for kernel $kernel"; exit 1; }
 cd $root_dir || { echo "Failed to cleanup for kernel $kernel"; exit 1; }
 rm -rf ./tmp || { echo "Failed to cleanup for kernel $kernel"; exit 1; }
