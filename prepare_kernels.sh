@@ -9,7 +9,7 @@ apply_patches()
 {
 for patch in ./kernel-patches/"$1"/*.patch; do
 	echo -e "${BLUE_COLOR}Applying patch: $patch$NORMAL_COLOR"
-	patch -d"./kernels/$1" -p1 --no-backup-if-mismatch -N < "$patch" || { echo -e "${RED_COLOR}Kernel $1 patch failed$NORMAL_COLOR"; exit 1; }
+	patch -d"./kernels/$1" -p1 --no-backup-if-mismatch -N < "$patch" || { echo -e "${RED_COLOR}Kernel $1 patch $patch failed$NORMAL_COLOR"; exit 1; }
 done
 echo -e "${GREEN_COLOR}Applying patch all done!$NORMAL_COLOR"
 }
@@ -42,8 +42,10 @@ GITHUB_URL=https://github.com
 declare -A kernel_info=(
 	["6.12,url"]=$GITHUB_URL/android-generic/kernel-zenith
 	["6.12,branch"]="6.12"
+	["6.14,url"]=$GITHUB_URL/android-generic/kernel-zenith
+	["6.14,branch"]="6.14"
 )
 
-kernels="6.12"
+kernels="6.14"
 download_and_patch_kernels
 
