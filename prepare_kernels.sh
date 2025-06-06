@@ -43,7 +43,7 @@ declare -A kernel_info=(
 	["6.12,url"]=$GITHUB_URL/android-generic/kernel-zenith
 	["6.12,branch"]="6.12"
 	["6.14,url"]=$GITHUB_URL/android-generic/kernel-zenith
-	["6.14,branch"]="6.14"
+	["6.14,branch"]="6.14_KSU"
 )
 
 kernels="6.14"
