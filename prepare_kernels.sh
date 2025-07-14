@@ -30,6 +30,13 @@ for kernel in $kernels; do
 
 	git clone --depth=1 $kernel_remote_path -b $kernel_remote_branch --recursive ./kernels/$kernel || { echo -e "${RED_COLOR}Download kernel $kernel failed!$NORMAL_COLOR"; exit 1; }
 
+	# 对于没有ksu内核，集成SukiSU-Ultra。非GKI模式
+	if [ ! -d "./kernels/$kernel/KernelSU" ];then
+		pushd ./kernels/$kernel
+		curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s nongki
+		popd
+	fi
+
 	apply_patches "$kernel"
 	make_config "$kernel"
 done
@@ -43,7 +50,7 @@ declare -A kernel_info=(
 	["6.12,url"]=$GITHUB_URL/android-generic/kernel-zenith
 	["6.12,branch"]="6.12"
 	["6.14,url"]=$GITHUB_URL/android-generic/kernel-zenith
-	["6.14,branch"]="6.14_KSU"
+	["6.14,branch"]="6.14"
 )
 
 kernels="6.14"
