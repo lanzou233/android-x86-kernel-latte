@@ -28,7 +28,7 @@ for kernel in $kernels; do
 	kernel_remote_branch=${kernel_info["$kernel,branch"]}
 	echo -e "${BLUE_COLOR}kernel_remote_path=$kernel_remote_path$NORMAL_COLOR"
 
-	git clone --depth=1 $kernel_remote_path -b $kernel_remote_branch --recursive ./kernels/$kernel || { echo -e "${RED_COLOR}Download kernel $kernel failed!$NORMAL_COLOR"; exit 1; }
+	git clone --depth=1 --single-branch $kernel_remote_path -b $kernel_remote_branch --recursive ./kernels/$kernel || { echo -e "${RED_COLOR}Download kernel $kernel failed!$NORMAL_COLOR"; exit 1; }
 
 	# 对于没有ksu内核，集成SukiSU-Ultra。非GKI模式
 	if [ ! -d "./kernels/$kernel/KernelSU" ];then
@@ -51,8 +51,10 @@ declare -A kernel_info=(
 	["6.12,branch"]="6.12"
 	["6.14,url"]=$GITHUB_URL/android-generic/kernel-zenith
 	["6.14,branch"]="6.14"
+	["6.15,url"]=$GITHUB_URL/android-generic/kernel-zenith
+	["6.15,branch"]="6.15"
 )
 
-kernels="6.14"
+kernels="6.15"
 download_and_patch_kernels
 
