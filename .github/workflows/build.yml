@@ -6,6 +6,7 @@ on:
       - 'main'
     paths-ignore:
       - 'README.md'
+      - '.github/workflows/build.yml'
 concurrency:
   group: environment-${{ github.ref }}
   cancel-in-progress: true
@@ -85,8 +86,13 @@ jobs:
           if-no-files-found: error
   package-kernel:
     name: Package kernel
-    needs: build-kernels
+    needs:
+        - prepare-kernels
+        - build-kernels
     runs-on: ubuntu-24.04
+    strategy:
+        matrix:
+            kernel: ${{ fromJson(needs.prepare-kernels.outputs.matrix) }}
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -112,20 +118,20 @@ jobs:
       - name: Download built kernels
         uses: actions/download-artifact@v4
         with:
+          name: built-kernel-${{ matrix.kernel }}
           path: /tmp
       - name: Copy built kernels
         run: |
-          for file in /tmp/built-kernel-*/built-kernel-*.tar.gz
-          do
-            tar zxf $file
-            rm -f $file
-          done
-          rm -r /tmp/kernels-source/kernels-source.tar.gz
+          ls -l /tmp/built-kernel-*
+          tar zxf /tmp/built-kernel-*.tar.gz
+          rm -f /tmp/built-kernel-*.tar.gz
       - name: package kernel
-        run: sudo bash package_kernels.sh
+        run: |
+          sudo bash package_kernels.sh
+          ls -l out
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: kernel
+          name: kernel-${{ matrix.kernel }}-package
           path: out/kernel-*.tar.gz
           if-no-files-found: error
