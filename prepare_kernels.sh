@@ -16,8 +16,12 @@ echo -e "${GREEN_COLOR}Applying patch all done!$NORMAL_COLOR"
 
 make_config()
 {
-echo "Creating $2 config for kernel $1"
-cp ./kernel-patches/mipad2_defconfig ./kernels/$1/arch/x86/configs/mipad2_defconfig || { echo -e "${RED_COLOR}Kernel $1 configuration failed$NORMAL_COLOR"; exit 1; }
+echo "Copy config for kernel $1"
+config_file=./kernel-patches/mipad2_defconfig
+if [ -f ./kernel-patches/$1_defconfig ];then
+	config_file=./kernel-patches/$1_defconfig
+fi
+cp $config_file ./kernels/$1/arch/x86/configs/mipad2_defconfig || { echo -e "${RED_COLOR}Kernel $1 configuration failed$NORMAL_COLOR"; exit 1; }
 make -C ./kernels/$1 O=out mipad2_defconfig || { echo -e "${RED_COLOR}Kernel $1 configuration failed$NORMAL_COLOR"; exit 1; }
 }
 
