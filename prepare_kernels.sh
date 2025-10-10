@@ -57,12 +57,10 @@ GITHUB_URL=https://github.com
 declare -A kernel_info=(
 	["6.12,url"]=$GITHUB_URL/android-generic/kernel-zenith
 	["6.12,branch"]="6.12"
-	["6.14,url"]=$GITHUB_URL/android-generic/kernel-zenith
-	["6.14,branch"]="6.14"
 	["6.15,url"]=$GITHUB_URL/android-generic/kernel-zenith
 	["6.15,branch"]="6.15"
 )
 
-kernels="${1:-6.12 6.14 6.15}"
+kernels="${1:-6.12 6.15}"
 download_and_patch_kernels
 
