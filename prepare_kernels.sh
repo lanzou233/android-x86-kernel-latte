@@ -40,10 +40,6 @@ for kernel in $kernels; do
 		curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s nongki
 		popd
 	fi
-	# 防止 SukiSU-Ultra 同步内核仓库历史commit, 这内核能给他下出2G大小的文件。
-	if [ -d "./kernels/$kernel/.git" ];then
-		rm -rf "./kernels/$kernel/.git"
-	fi
 
 	apply_patches "$kernel"
 	make_config "$kernel"
