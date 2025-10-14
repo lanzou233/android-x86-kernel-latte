@@ -1,0 +1,130 @@
+diff --git a/fs/esdfs/dentry.c b/fs/esdfs/dentry.c
+index c17f1933f..b4fbd85b6 100644
+--- a/fs/esdfs/dentry.c
++++ b/fs/esdfs/dentry.c
+@@ -19,7 +19,8 @@
+  *          0: tell VFS to invalidate dentry
+  *          1: dentry is valid
+  */
+-static int esdfs_d_revalidate(struct dentry *dentry, unsigned int flags)
++static int esdfs_d_revalidate(struct inode *dir, const struct qstr *name,
++				struct dentry *dentry, unsigned int flags)
+ {
+ 	struct path lower_path;
+ 	struct path lower_parent_path;
+@@ -50,7 +51,13 @@ static int esdfs_d_revalidate(struct dentry *dentry, unsigned int flags)
+ 		goto drop;
+ 
+ 	if (lower_dentry->d_flags & DCACHE_OP_REVALIDATE) {
+-		err = lower_dentry->d_op->d_revalidate(lower_dentry, flags);
++		struct inode *lower_dir = d_inode(parent_dentry);
++		struct name_snapshot n;
++
++		take_dentry_name_snapshot(&n, lower_dentry);
++		err = lower_dentry->d_op->d_revalidate(lower_dir, &n.name,
++							lower_dentry, flags);
++		release_dentry_name_snapshot(&n);
+ 		if (err == 0)
+ 			goto drop;
+ 	}
+diff --git a/fs/esdfs/inode.c b/fs/esdfs/inode.c
+index e17c2edca..ab26ab444 100644
+--- a/fs/esdfs/inode.c
++++ b/fs/esdfs/inode.c
+@@ -130,23 +130,24 @@ static int esdfs_unlink(struct inode *dir, struct dentry *dentry)
+ 	return err;
+ }
+ 
+-static int esdfs_mkdir(struct mnt_idmap *idmap, struct inode *dir,
+-		       struct dentry *dentry, umode_t mode)
++static struct dentry *esdfs_mkdir(struct mnt_idmap *idmap, struct inode *dir,
++				struct dentry *dentry, umode_t mode)
+ {
+ 	int err;
+ 	struct dentry *lower_dentry;
+ 	struct dentry *lower_parent_dentry = NULL;
+ 	struct path lower_path;
++	struct dentry *index_dentry;
+ 	int mask;
+ 	const struct cred *creds =
+ 			esdfs_override_creds(ESDFS_SB(dir->i_sb),
+ 					ESDFS_I(dir), &mask);
+ 	if (!creds)
+-		return -ENOMEM;
++		return ERR_PTR(-ENOMEM);
+ 
+ 	if (test_opt(ESDFS_SB(dir->i_sb), ACCESS_DISABLE)) {
+ 		esdfs_revert_creds(creds, NULL);
+-		return -ENOENT;
++		return ERR_PTR(-ENOENT);
+ 	}
+ 
+ 	esdfs_get_lower_path(dentry, &lower_path);
+@@ -155,10 +156,12 @@ static int esdfs_mkdir(struct mnt_idmap *idmap, struct inode *dir,
+ 
+ 	mode |= S_IFDIR;
+ 	esdfs_set_lower_mode(ESDFS_SB(dir->i_sb), ESDFS_I(dir), &mode);
+-	err = vfs_mkdir(idmap, lower_parent_dentry->d_inode, lower_dentry,
+-			mode);
+-	if (err)
++	index_dentry = vfs_mkdir(idmap, lower_parent_dentry->d_inode, lower_dentry,
++							mode);
++	if (IS_ERR(index_dentry)){
++		err = PTR_ERR(index_dentry);
+ 		goto unlock_lower_parent;
++	}
+ 
+ 	err = esdfs_interpose(dentry, dir->i_sb, &lower_path,
+ 				ESDFS_I(dir)->userid);
+@@ -174,7 +177,12 @@ static int esdfs_mkdir(struct mnt_idmap *idmap, struct inode *dir,
+ 	if (ESDFS_DERIVE_PERMS(ESDFS_SB(dir->i_sb))) {
+ 		unlock_dir(lower_parent_dentry);
+ 		err = esdfs_derive_mkdir_contents(dentry);
+-		goto out;
++		if (err)
++			goto out;
++		// 成功时返回 NULL 表示使用默认的 dentry
++		esdfs_put_lower_path(dentry, &lower_path);
++		esdfs_revert_creds(creds, &mask);
++		return NULL;
+ 	}
+ 
+ unlock_lower_parent:
+@@ -182,7 +190,12 @@ static int esdfs_mkdir(struct mnt_idmap *idmap, struct inode *dir,
+ out:
+ 	esdfs_put_lower_path(dentry, &lower_path);
+ 	esdfs_revert_creds(creds, &mask);
+-	return err;
++	
++	if (err)
++		return ERR_PTR(err);
++	
++	// 成功时返回 NULL 表示使用默认的 dentry
++	return NULL;
+ }
+ 
+ static int esdfs_rmdir(struct inode *dir, struct dentry *dentry)
+@@ -485,14 +498,6 @@ static int esdfs_setattr(struct mnt_idmap *idmap,
+ 	return err;
+ }
+ 
+-static int esdfs_do_getattr(const struct path *path, struct kstat *stat,
+-			       u32 request_mask, unsigned int flags)
+-{
+-	if (flags & AT_GETATTR_NOSEC)
+-		return vfs_getattr_nosec(path, stat, request_mask, flags);
+-	return vfs_getattr(path, stat, request_mask, flags);
+-}
+-
+ static int esdfs_getattr(struct mnt_idmap *idmap, 
+ 			 const struct path *path, struct kstat *stat,
+ 			 u32 request_mask, unsigned int flags)
+@@ -517,7 +522,7 @@ static int esdfs_getattr(struct mnt_idmap *idmap,
+ 	esdfs_get_lower_path(dentry, &lower_path);
+ 
+ 	/* We need the lower getattr to calculate stat->blocks for us. */
+-	err = esdfs_do_getattr(&lower_path, &lower_stat, request_mask, flags);
++	err = vfs_getattr_nosec(&lower_path, &lower_stat, request_mask, flags);
+ 	if (err)
+ 		goto out;
+ 
