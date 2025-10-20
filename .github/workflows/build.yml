@@ -1,6 +1,15 @@
 name: Build using Github Actions
 on:
   workflow_dispatch:
+    inputs:
+      kernel:
+        required: true
+        description: 'select kernel version'
+        default: '6.15'
+        type: choice
+        options:
+        - "6.12"
+        - "6.15"
   push:
     branches:
       - 'main'

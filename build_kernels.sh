@@ -1,21 +1,30 @@
 #!/bin/bash
 
-if [ ! -d /home/runner/work ]; then NTHREADS=$(nproc); else NTHREADS=$(($(nproc)*4)); fi
+if [ ! -d /home/runner/work ];then
+	NTHREADS=$(nproc)
+	MOK_KEY=MOK.priv
+	MOK_CERT=MOK.cer
+else
+	NTHREADS=$(($(nproc)*4))
+	MOK_KEY=/persist/keys/MOK.priv
+	MOK_CERT=/persist/keys/MOK.cer
+fi
 
 if [ -z "$1" ]; then
-kernels=$(ls -d ./kernels/* | sed 's#./kernels/##g')
+	kernels=$(ls -d ./kernels/* | sed 's#./kernels/##g')
 else
-kernels="$1"
+	kernels="$1"
 fi
 
 for kernel in $kernels; do
 	echo "Building kernel $kernel"
-	KCONFIG_NOTIMESTAMP=1 KBUILD_BUILD_TIMESTAMP='' KBUILD_BUILD_USER=chronos KBUILD_BUILD_HOST=localhost make -C "./kernels/$kernel" -j"$NTHREADS" O=out EXTART_CFLAGS="-std=gnu11" || { echo "Kernel build failed"; exit 1; }
+	KCONFIG_NOTIMESTAMP=1 KBUILD_BUILD_TIMESTAMP='' KBUILD_BUILD_USER=Qs315490 KBUILD_BUILD_HOST=localhost \
+		make -C "./kernels/$kernel" -j"$NTHREADS" O=out EXTART_CFLAGS="-std=gnu11" || { echo "Kernel build failed"; exit 1; }
 	rm -f "./kernels/$kernel/out/source"
-	if [ -f /persist/keys/MOK.priv ] && [ -f /persist/keys/MOK.pem ]; then
+	if [ -f "$MOK_KEY" ] && [ -f "$MOK_CERT" ]; then
 		echo "Signing kernel $kernel"
-		mv "./kernels/$kernel/out/arch/x86/boot/bzImage" "./kernels/$kernel/out/arch/x86/boot/bzImage.unsigned" || { echo "Kernel signing failed"; exit 1; }
-		sbsign --key /persist/keys/MOK.priv --cert /persist/keys/MOK.pem "./kernels/$kernel/out/arch/x86/boot/bzImage.unsigned" --output "./kernels/$kernel/out/arch/x86/boot/bzImage" || { echo "Kernel signing failed"; exit 1; }
+		mv "./kernels/$kernel/out/arch/x86/boot/bzImage"{,.unsigned} || { echo "Kernel signing failed"; exit 1; }
+		sbsign --key "$MOK_KEY" --cert "$MOK_CERT" --output "./kernels/$kernel/out/arch/x86/boot/bzImage"{,.unsigned}  || { echo "Kernel signing failed"; exit 1; }
 	fi
 	echo "Including kernel $kernel headers"
 	srctree="./kernels/$kernel"
